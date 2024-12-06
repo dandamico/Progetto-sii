@@ -1,13 +1,14 @@
+import sqlite3
 from cat.mad_hatter.decorators import tool, hook
 from pydantic import Field, field_validator
 from cat.log import log
-from typing import Dict
+
 from .cform import CForm, CBaseModel
 import json
 import random
 
 menu = [ "Margherita", "Romana", "Quattro Formaggi", "Capricciosa", "Bufalina", "Diavola"]
-    
+
 
 # Declare model class
 class PizzaOrder(CBaseModel):
@@ -101,8 +102,26 @@ class MyForm(CForm):
 @tool(return_direct=True)
 def start_order_pizza_intent(input, cat):
     """I would like to order a pizza
-    I'll take a Margherita pizza"""
+    Voglio della pizza
+    vorrei ordinare della pizza
+    prendo delle pizza
+    prendo una pizza
+    I'll take a Margherita pizza
+    L'input è sempre la parola che viene dopo la frase- voglio ordinare una pizza"""
     log.critical("INTENT ORDER PIZZA START")
+
+    conn = sqlite3.connect('/app/cat/plugins/cat_form/ristorante.db')
+    cursor = conn.cursor()
+    print(input)
+    query = "SELECT * FROM menu WHERE nome = ?;"
+
+    print(query)
+    # Esecuzione della query con il parametro
+    cursor.execute(query, (str(input),))
+    risultato = cursor.fetchone()
+    # Chiusura della connessione
+    conn.close()
+    print(risultato)
     return PizzaOrder.start(cat, form=MyForm)
 
  
@@ -111,7 +130,8 @@ def start_order_pizza_intent(input, cat):
 def stop_order_pizza_intent(input, cat):
     """I don't want to order pizza anymore, 
     I want to give up on the order, 
-    go back to normal conversation"""
+    go back to normal conversation
+    sono a posto cosi"""
     log.critical("INTENT ORDER PIZZA STOP")
     return PizzaOrder.stop(cat)
 

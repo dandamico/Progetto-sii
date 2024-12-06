@@ -750,15 +750,21 @@ class CBaseModel(BaseModel):
     @classmethod
     def start(cls, cat, form=CForm):
         key = cls.__name__
+        print("PRIMA DELL'IF")
+        print(cat.working_memory.keys())
         if key not in cat.working_memory.keys():
+            print("ENTRATO NELL'IF:")
             cform = form(cls, key, cat)
             cat.working_memory[key] = cform
             cform.check_active_form()
+            print(cat.working_memory.keys())
             response = cform.dialogue()
             return response
         cform = cat.working_memory[key]
         cform.check_active_form()
         response = cform.execute_memory_chain()
+        print("FINE DI START")
+        print(cat.working_memory.keys())
         return response
 
     # Stop conversation
