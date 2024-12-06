@@ -1,7 +1,7 @@
 import sqlite3
 
 # Connessione al database (crea il file se non esiste)
-conn = sqlite3.connect('plugins/resturant/ristorante.db')
+conn = sqlite3.connect('plugins/restaurant/ristorante.db')
 
 # Creazione di un cursore per eseguire comandi SQL
 cursor = conn.cursor()
