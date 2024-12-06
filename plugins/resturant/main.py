@@ -1,36 +1,8 @@
-# import sqlite3
-# from cat.mad_hatter.decorators import tool, hook
-# from pydantic import Field, field_validator
-# from cat.log import log
-#
-# @tool
-# def order(input, cat):
-#     """Voglio della pizza
-#     vorrei ordinare della pizza
-#     prendo delle pizze
-#     prendo una pizza
-#     I'll take a Margherita pizza
-#     L'input è la parola che viene dopo la frase- voglio ordinare una pizza"""
-#     log.critical("INZIATO ORDINE PIZZA")
-#
-#     conn = sqlite3.connect('/app/cat/plugins/resturant/ristorante.db')
-#     cursor = conn.cursor()
-#     print(input)
-#     query = "SELECT * FROM menu WHERE nome = ?;"
-#
-#     print(query)
-#     # Esecuzione della query con il parametro
-#     cursor.execute(query, (str(input),))
-#     risultato = cursor.fetchone()
-#     # Chiusura della connessione
-#     conn.close()
-#     print(risultato)
-#     return print("ciao")
-
 from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator, ValidationInfo
 #import sqlite3
 from cat.experimental.form import form, CatForm
+from cat.mad_hatter.decorators import tool
 
 # A fake database to simulate existing orders at certain times
 fake_db = {
@@ -51,18 +23,18 @@ fake_db = {
     },
 }
 
-# conn = sqlite3.connect('/app/cat/plugins/resturant/ristorante.db')
-# cursor = conn.cursor()
-# print(input)
-# query = "SELECT * FROM menu;"
-#
-# print(query)
-# # Esecuzione della query con il parametro
-# cursor.execute(query)
-# risultato = cursor.fetchall()
-# # Chiusura della connessione
-# conn.close()
-# lista_pizze = risultato
+conn = sqlite3.connect('/app/cat/plugins/resturant/ristorante.db')
+cursor = conn.cursor()
+print(input)
+query = "SELECT * FROM menu;"
+
+print(query)
+# Esecuzione della query con il parametro
+cursor.execute(query)
+risultato = cursor.fetchall()
+# Chiusura della connessione
+conn.close()
+lista_pizze = risultato
 
 
 # Define the base model for a pizza order
@@ -82,21 +54,21 @@ class PizzaOrder(BaseModel):
         return v
 
 
-    # @field_validator("pizzas")
-    # @classmethod
-    # def check_pizza_exist(cls, v: str, info: ValidationInfo) -> str:
-    #     conn = sqlite3.connect('/app/cat/plugins/resturant/ristorante.db')
-    #     cursor = conn.cursor()
-    #     print(input)
-    #     query = "SELECT * FROM menu WHERE nome = ?;"
-    #
-    #     print(query)
-    #     # Esecuzione della query con il parametro
-    #     cursor.execute(query, (str(input),))
-    #     risultato = cursor.fetchone()
-    #     # Chiusura della connessione
-    #     conn.close()
-    #     for elem in risultato:
+    @field_validator("pizzas")
+    @classmethod
+    def check_pizza_exist(cls, v: str, info: ValidationInfo) -> str:
+        conn = sqlite3.connect('/app/cat/plugins/resturant/ristorante.db')
+        cursor = conn.cursor()
+        print(input)
+        query = "SELECT * FROM menu WHERE nome = ?;"
+
+        print(query)
+        # Esecuzione della query con il parametro
+        cursor.execute(query, (str(input),))
+        risultato = cursor.fetchone()
+        # Chiusura della connessione
+        conn.close()
+        for elem in risultato:
 
 
     # Validator to check if the desired time is available
@@ -154,6 +126,7 @@ class PizzaForm(CatForm):
         return {"output": self.cat.llm(prompt)}
 
     # Handle the situation where the user cancels the form
+    @tool
     def message_closed(self):
         prompt = (
             "The customer is not hungry anymore. Respond with a short and bothered answer."
