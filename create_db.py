@@ -1,7 +1,7 @@
 import sqlite3
 
 # Connessione al database (crea il file se non esiste)
-conn = sqlite3.connect('ristorante.db')
+conn = sqlite3.connect('plugins/restaurant/ristorante.db')
 
 # Creazione di un cursore per eseguire comandi SQL
 cursor = conn.cursor()
@@ -31,6 +31,32 @@ cursor.executemany('''
     INSERT INTO menu (nome, prezzo, quantità_ordinate_totale)
     VALUES (?, ?, ?)
 ''', menu_items)
+
+conn.commit()
+
+# Creazione della tabella "ordini" con relazione alla tabella "menu"
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS ordini (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        cliente TEXT NOT NULL,
+        id_menu INTEGER NOT NULL,
+        FOREIGN KEY (id_menu) REFERENCES menu (id)
+    )
+''')
+
+# Salvataggio delle modifiche
+conn.commit()
+
+# Esempio di inserimento dati nella tabella "ordini"
+ordini_items = [
+    ('Mario Rossi', 1),  # id_menu 1: Lasagna al Forno
+    ('Giulia Verdi', 2)  # id_menu 2: Pizza Quattro Stagioni
+]
+
+cursor.executemany('''
+    INSERT INTO ordini (cliente, id_menu)
+    VALUES (?, ?)
+''', ordini_items)
 
 conn.commit()
 
