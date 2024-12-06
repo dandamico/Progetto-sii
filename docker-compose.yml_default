@@ -1,49 +1,39 @@
 services:
 
+  cheshire-cat-vector-memory:
+    image: qdrant/qdrant:latest
+    container_name: vector_memory_sii
+    hostname: vector_memory_sii
+    ports:
+      - 6333:6333
+    network_mode: "host"
+    volumes:
+      - ./cat/long_term_memory/vector:/qdrant/storage
+    restart: unless-stopped
+
   cheshire-cat-core:
     image: ghcr.io/cheshire-cat-ai/core:latest
-    container_name: cheshire_cat_core
+    container_name: cat_core_sii
+    hostname: cat_core_sii
+    network_mode: "host"
     ports:
       - 1865:80
       - 5678:5678
     volumes:
-      - ./static:/app/cat/static
       - ./plugins:/app/cat/plugins
       - ./data:/app/cat/data
-    networks:
-      - public
+    environment:
+      - PYTHONUNBUFFERED=1
+      - WATCHFILES_FORCE_POLLING=true
+      - CORE_HOST=${CORE_HOST:-localhost}
+      - CORE_PORT=${CORE_PORT:-1865}
+      #- QDRANT_HOST=${QDRANT_HOST:-cat_vector_memory}
+      - QDRANT_HOST=${QDRANT_HOST:-localhost}
+      - QDRANT_PORT=${QDRANT_PORT:-6333}
+      - CORE_USE_SECURE_PROTOCOLS=${CORE_USE_SECURE_PROTOCOLS:-}
+      - API_KEY=${API_KEY:-}
+      - LOG_LEVEL=${LOG_LEVEL:-WARNING}
+      - DEBUG=${DEBUG:-true}
+      - SAVE_MEMORY_SNAPSHOTS=${SAVE_MEMORY_SNAPSHOTS:-false}
+      - DOCKERD_ROOTLESS_ROOTLESSKIT_DISABLE_HOST_LOOPBACK=false
 
-  ollama:
-    image: ollama/ollama
-    container_name: ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
-    runtime: nvidia
-    networks:
-      public:
-
-
-  cheshire-cat-vector-memory:
-    image: qdrant/qdrant:latest
-    container_name: cheshire_cat_vector_memory
-    expose:
-      - 6333
-    volumes:
-      - ./cat/long_term_memory/vector:/qdrant/storage
-    restart: unless-stopped
-    networks:
-      public:
-
-volumes:
-  ollama:
-
-networks:
-  public:
-    driver: bridge
