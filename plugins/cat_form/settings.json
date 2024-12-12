@@ -1,9 +1,0 @@
-{
-    "json_extractor": "guardrails",
-    "strict": false,
-    "ask_confirm": true,
-    "use_rag_confirm": false,
-    "pizza_order_examples": "ciao vorrei una pizza quattro stagioni",
-    "user_registration_examples": "[]",
-    "auto_handle_conversation": true
-}
