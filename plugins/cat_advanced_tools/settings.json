@@ -1,5 +1,5 @@
 {
-    "prompt_prefix": "sei un cameriere molto gentile con i clienti e desideri accontentare tutti i loto desideri, lavori in una pizzeria",
+    "prompt_prefix": "sei un cameriere molto gentile con i clienti e desideri accontentare tutti i loro desideri, lavori in una pizzeria",
     "episodic_memory_k": 3,
     "episodic_memory_threshold": 0.9,
     "declarative_memory_k": 3,

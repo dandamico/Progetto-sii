@@ -164,12 +164,11 @@
 #             "basandoti su quello che manca rispondi qualcosa per sollecitare il cliente a fornire le informazioni mancanti ."
 #         )
 #         return {"output": f"{self.cat.llm(prompt)}"}
-
-
-
+import sqlite3
 from typing import Optional, List
-from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
+from cat.mad_hatter.decorators import tool
 from cat.experimental.form import form, CatForm
 
 # A fake database to simulate existing orders at certain times
@@ -190,6 +189,69 @@ fake_db = {
         "address": "123 Main St, Anytown, USA",
     },
 }
+
+
+# @tool(
+#     return_direct=True,
+#     examples=["What does the menu offer?", "What's on the menu?", "What pizzas are on the menu?"]
+# )
+# def ask_menu(tool_input, cat):
+#     """
+#     Use this tool every time the customer wants to know what the menu offers, Input is always None
+#     """
+#     cat.send_ws_message("Sto cercando il menu")
+#     conn = sqlite3.connect('/app/cat/plugins/restaurant/ristorante.db')
+#     cursor = conn.cursor()
+#     query = "SELECT nome FROM menu;"
+#     # Esecuzione della query con il parametro
+#     cursor.execute(query)
+#     risultato = cursor.fetchall()
+#     # Chiusura della connessione
+#     conn.close()
+#     lista_pizze = risultato
+#     prompt = (
+#         f"Consider this list of pizzas:\n{lista_pizze}\n"
+#         "Present the list of pizzas to the customer as if you were introducing a menu\n"
+#         "You should say something like, 'This is what our menu offers... choose the pizza you like the most'"
+#     )
+#     return f"{prompt}"
+#
+# @tool(
+#     return_direct=True,
+#     examples=["How much ... cost?"]
+# )
+# def get_pizza_price(tool_input: str, cat):
+#     """
+#     input is always an element present on menu,
+#     input is always the menu item the user wants to know the price of,
+#     input is always present in user's question,
+#     how much margherita cost? in this example the input is "margherita"
+#     """
+#     cat.send_ws_message("Sto cercando il prezzo")
+#     conn = sqlite3.connect('/app/cat/plugins/restaurant/ristorante.db')
+#     cursor = conn.cursor()
+#     query = "SELECT prezzo FROM menu WHERE nome = ? LIMIT 1;"
+#     cursor.execute(query, (tool_input,))
+#     result = cursor.fetchone()
+#     conn.close()
+#     print("RESULT IS: " + str(result))
+#     if result:
+#         print("ENTRATO NELL'IF E RESULT[0] IS: " + str(result[0]))
+#         res = str(result[0])
+#         prompt = (
+#             f"Consider this price food:\n{res}\n"
+#             "Present the price food to the customer\n"
+#             f"You should say something like, 'the price you asked me is:{res}\n'"
+#         )
+#         return f"{prompt}"
+#     else:
+#         prompt = (
+#             "the item wanted by the customer is not on the menu\n"
+#             f"You should say something like, 'the item you asked for is not on the menu\n'"
+#         )
+#         return f"{prompt}"
+
+
 
 
 # Define the base model for a pizza order
@@ -225,11 +287,13 @@ class PizzaOrder(BaseModel):
 # forms let you control goal oriented conversations
 @form
 class PizzaForm(CatForm):
-    description = "Pizza Order"
+    description = "A form that is triggered when the user wants to start an order at the restaurant."
     model_class = PizzaOrder
     start_examples = [
-        "order a pizza!",
-        "I want pizza"
+        "I want to place an order",
+        "I want a pizza",
+        "Hi, I would like to order a pizza",
+        "Hi, I would like to order"
     ]
     stop_examples = [
         "stop pizza order",
@@ -247,6 +311,7 @@ class PizzaForm(CatForm):
     #         # Otherwise, use the base PizzaOrder model
     #         self.model_class = PizzaOrder
     #     return self.model_class
+
 
     # Method to handle form submission
     def submit(self, form_data):

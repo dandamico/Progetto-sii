@@ -1,0 +1,10 @@
+{
+    "name": "Restaurant utility",
+    "version": "0.0.1",
+    "description": "Order your Pizza - MIAAAAAAAOOO!",
+    "author_name": "Matteo Romeo",
+    "author_url": "https://github.com/lucagobbi",
+    "plugin_url": "https://github.com/lucagobbi/purrfect-pizza-planner",
+    "tags": "cat, tutorial, pizza, form, order",
+    "thumb": "https://raw.githubusercontent.com/lucagobbi/purrfect-pizza-planner/master/docs/purrfect-pizza-planner/main/assets/pizza_cat2.webp"
+}

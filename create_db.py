@@ -12,7 +12,8 @@ cursor.execute('''
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT NOT NULL,
         prezzo REAL NOT NULL,
-        quantità_ordinate_totale INTEGER DEFAULT 0
+        quantità_ordinate_totali INTEGER DEFAULT 0,
+        rimanenze_magazzino INTEGER DEFAULT 10
     )
 ''')
 
@@ -20,16 +21,19 @@ cursor.execute('''
 conn.commit()
 
 menu_items = [
-    ('Lasagna al Forno', 9.50, 0),
-    ('Pizza Quattro Stagioni', 11.00, 0),
-    ('Spaghetti allo Scoglio', 13.50, 0),
-    ('Gelato alla Vaniglia', 4.00, 0)
+    ('lasagna al forno', 9.50, 0, 10),
+    ('margherita', 8.0, 0, 10),
+    ('boscaiola', 10.0, 0, 10),
+    ('capricciosa', 9.50, 0, 10),
+    ('pizza quattro stagioni', 11.00, 0, 10),
+    ('spaghetti allo scoglio', 13.50, 0, 10),
+    ('gelato alla vaniglia', 4.00, 0, 10)
 ]
 
 # Inserimento dei dati nella tabella
 cursor.executemany('''
-    INSERT INTO menu (nome, prezzo, quantità_ordinate_totale)
-    VALUES (?, ?, ?)
+    INSERT INTO menu (nome, prezzo, quantità_ordinate_totali, rimanenze_magazzino)
+    VALUES (?, ?, ?, ?)
 ''', menu_items)
 
 conn.commit()
