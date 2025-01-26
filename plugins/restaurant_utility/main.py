@@ -11,22 +11,13 @@ def ask_menu(tool_input, cat):
     Use this tool every time the customer wants to know what the menu offers, Input is always None
     """
     cat.send_ws_message("Sto cercando il menu")
-    conn = sqlite3.connect('/app/cat/plugins/restaurant/ristorante.db')
-    cursor = conn.cursor()
-    query = "SELECT nome FROM menu;"
-    # Esecuzione della query con il parametro
-    cursor.execute(query)
-    risultato = cursor.fetchall()
-    # Chiusura della connessione
-    conn.close()
-    lista_pizze = risultato
+    lista_pizze = get_all_items_in_menu()
     prompt = (
         f"Consider this list of pizzas:\n{lista_pizze}\n"
         "Present the list of pizzas to the customer as if you were introducing a menu\n"
         "You should say something like, 'This is what our menu offers... choose the pizza you like the most'"
     )
     return f"{prompt}"
-
 
 @tool(
     return_direct=False,
@@ -42,12 +33,7 @@ def get_pizza_price(tool_input: str, cat):
     cat.send_ws_message("Sto cercando il prezzo")
     print(tool_input)
 
-    conn = sqlite3.connect('/app/cat/plugins/restaurant/ristorante.db')
-    cursor = conn.cursor()
-    query = "SELECT prezzo FROM menu WHERE nome = ? LIMIT 1;"
-    cursor.execute(query, (tool_input.lower(),))
-    result = cursor.fetchone()
-    conn.close()
+    result = get_price_of_item_in_menu(tool_input)
     print("RESULT IS: " + str(result))
     if result:
         print("ENTRATO NELL'IF E RESULT[0] IS: " + str(result[0]))
@@ -64,3 +50,26 @@ def get_pizza_price(tool_input: str, cat):
             f"You should say something like, 'the item you asked for is not on the menu\n'"
         )
         return f"{prompt}"
+
+def get_all_items_in_menu():
+    conn = sqlite3.connect('/app/cat/plugins/restaurant/ristorante.db')
+    cursor = conn.cursor()
+    query = "SELECT nome FROM menu;"
+    # Esecuzione della query con il parametro
+    cursor.execute(query)
+    risultato = cursor.fetchall()
+    # Chiusura della connessione
+    conn.close()
+    lista_pizze = [item[0] for item in risultato]
+    return lista_pizze
+
+
+def get_price_of_item_in_menu(tool_input):
+    conn = sqlite3.connect('/app/cat/plugins/restaurant/ristorante.db')
+    cursor = conn.cursor()
+    query = "SELECT prezzo FROM menu WHERE nome = ? LIMIT 1;"
+    cursor.execute(query, (tool_input.lower(),))
+    result = cursor.fetchone()
+    conn.close()
+    prezzo = result[0]
+    return prezzo
