@@ -81,7 +81,7 @@ def add_order_and_remove_rimanenze(nome_piatto):
     try:
         conn = sqlite3.connect('/app/cat/plugins/restaurant/ristorante.db')
         print((nome_piatto,))
-        piatto = nome_piatto.lower()
+        piatto = nome_piatto.lower().replace(" ", "_")
         cursor = conn.cursor()
         cursor.execute('''
                 UPDATE menu
