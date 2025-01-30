@@ -33,7 +33,7 @@ def get_pizza_price(tool_input: str, cat):
     cat.send_ws_message("Sto cercando il prezzo")
     print(tool_input)
 
-    result = get_price_of_item_in_menu(tool_input)
+    result = [get_price_of_item_in_menu(tool_input)]
     print("RESULT IS: " + str(result))
     if result:
         print("ENTRATO NELL'IF E RESULT[0] IS: " + str(result[0]))
@@ -73,3 +73,23 @@ def get_price_of_item_in_menu(tool_input):
     conn.close()
     prezzo = result[0]
     return prezzo
+
+
+def add_order_and_remove_rimanenze(nome_piatto):
+    try:
+        conn = sqlite3.connect('/app/cat/plugins/restaurant/ristorante.db')
+        print((nome_piatto,))
+        cursor = conn.cursor()
+        cursor.execute('''
+                UPDATE menu
+                SET quantità_ordinate_totali = quantità_ordinate_totali + 1,
+                    rimanenze_magazzino = rimanenze_magazzino - 1
+                WHERE nome = ?
+            ''', (nome_piatto,))  # Il parametro deve essere passato come tupla
+        conn.commit()
+        conn.close()
+        return "Database aggiornato per l'item: " + str(nome_piatto)
+    except sqlite3.OperationalError as e:
+        return e
+
+

@@ -5,32 +5,16 @@ from pydantic import BaseModel, Field, field_validator, ValidationInfo
 from cat.mad_hatter.decorators import tool
 from cat.mad_hatter.decorators import hook
 from cat.experimental.form import form, CatForm, CatFormState
-from ..restaurant_utility.main import get_all_items_in_menu, get_price_of_item_in_menu
-
-# A fake database to simulate existing orders at certain times
-fake_db = {
-    "21:00": {
-        "pizzas": ["Margherita", "Pepperoni"],
-        "delivery": False,
-        "customer_name": "John Doe",
-        "desired_time": "21:00",
-        "notes": "No onions, extra spicy oil",
-    },
-    "22:00": {
-        "pizzas": ["Margherita", "Pepperoni"],
-        "delivery": True,
-        "customer_name": "Jane Doe",
-        "desired_time": "22:00",
-        "notes": "No onions, extra spicy oil",
-        "address": "123 Main St, Anytown, USA",
-    },
-}
+from ..restaurant_utility.main import get_all_items_in_menu, get_price_of_item_in_menu, add_order_and_remove_rimanenze
 
 # @hook
 # def before_cat_sends_message(message, cat):
 #     active_form = cat.working_memory.active_form
 #     cat.send_ws_message("PORCO DE DIO MALEDETTO CANE SCHIFOSO LURIDO VERONA HA PERSO")
-#     message["content"] = str(message["content"]) + str(active_form.form_data)
+#     #message["content"] = str(message["content"]) + str(active_form.form_data)
+#     print("ACTIVE FORM NELL'HOOK:")
+#     print(type(active_form))
+#     print(active_form)
 #     return message
 
 
@@ -38,11 +22,10 @@ fake_db = {
 class PizzaOrder(BaseModel):
     items: List[str] = Field(..., description="List of item in menu requested by the customer (e.g., margherita, boscaiola)")
     #delivery: bool = Field(..., description="True if the customer wants delivery, False for pickup")
-    customer_name: str = Field(None, description="Customer's name")
+    customer_name: str = Field(..., description="Customer's name")
     #desired_time: str = Field(..., description="Desired time for delivery or pickup (format: HH:MM)")
     notes: Optional[str] = Field(None, description="Additional notes (e.g., no onions, extra spicy oil)")
     total: Optional[float] = Field(None, description="Total price of items in order requested by the customer")
-    #confirmed: bool = Field(False, description="Confirmed status of order", )
 
     # Validator to ensure the items list is not empty
     @field_validator("items")
@@ -100,7 +83,7 @@ class PizzaForm(CatForm):
     ]
     # Ask for confirmation before finalizing
     ask_confirm = True
-    model_class.items = []
+    #model_class.items
 
     # Method to handle form submission
     def submit(self, form_data):
@@ -111,14 +94,16 @@ class PizzaForm(CatForm):
         # Generate a response summarizing the completed order
         self.cat.send_ws_message("SUBMIT FUNCTION")
         print("FORM DATA: ", form_data)
-        # lista_ordinato = form_data.get('items', [])
-        # totale = 0
-        # for elem in lista_ordinato:
-        #     totale += get_price_of_item_in_menu(elem)
-        # tot = str(totale)
+
+        lista_ordinato = form_data.get('items', [])
+        for elem in lista_ordinato:
+            print("PIZZA ORDINATA: " + elem)
+            res = add_order_and_remove_rimanenze(elem)
+            print(res)
+
         prompt = (
             f"The pizza order is complete. The details are: {form_data}. "
-            "Respond with something like: 'Alright, your pizza is officially on its way.'"
+            "summarize the order shortly and tell it to the customer"
         )
         return {"output": self.cat.llm(prompt)}
 
@@ -134,8 +119,8 @@ class PizzaForm(CatForm):
     def message_wait_confirm(self):
         self.cat.send_ws_message("MESSAGE WAIT_CONFIRM FUNCTION")
         prompt = (
-            "Summarize the collected details kindly and professionally and after ask the customer if he want to confirm the information and proceed with the order or not \n"
             f"{self._generate_base_message()}\n"
+            "Summarize the collected details kindly and shortly and ask the customer if he want to confirm the information and proceed with the order or not \n"
            # "Say something like, 'So, this is what we’ve got ... Do you want to confirm?'"
         )
         return {"output": f"{self.cat.llm(prompt)}"}
@@ -143,9 +128,10 @@ class PizzaForm(CatForm):
     # Handle incomplete form inputs with a nudge
     def message_incomplete(self):
         self.cat.send_ws_message("MESSAGE INCOMPLETE  FUNCTION")
+        print(self._generate_base_message())
         prompt = (
-            f"The form is missing some details:\n{self._generate_base_message()}\n"
-            "Based on the missing information, kindly and professionally ask the customer to provide the necessary details"
+            f"{self._generate_base_message()}\n"
+            "Summarize the collected details kindly and shortly and ask the customer to provide missing information\n"
         )
         return {"output": f"{self.cat.llm(prompt)}"}
 
@@ -204,6 +190,7 @@ class PizzaForm(CatForm):
                         "confirm": """
 
         # Queries the LLM and check if user is agree or not
+
         response = self.cat.llm(confirm_prompt)
         return "true" in response.lower()
 
