@@ -60,35 +60,38 @@ def get_all_items_in_menu():
     risultato = cursor.fetchall()
     # Chiusura della connessione
     conn.close()
-    lista_pizze = [item[0] for item in risultato]
+    #lista_pizze = [item[0] for item in risultato]
+    lista_pizze = [item[0].replace("_", " ") for item in risultato]
     return lista_pizze
 
 
 def get_price_of_item_in_menu(tool_input):
     conn = sqlite3.connect('/app/cat/plugins/restaurant/ristorante.db')
     cursor = conn.cursor()
+    tool_input = tool_input.lower().replace(" ", "_")
     query = "SELECT prezzo FROM menu WHERE nome = ? LIMIT 1;"
-    cursor.execute(query, (tool_input.lower(),))
+    cursor.execute(query, (tool_input,))
     result = cursor.fetchone()
     conn.close()
     prezzo = result[0]
-    return prezzo
+    return prezzo if result else None
 
 
 def add_order_and_remove_rimanenze(nome_piatto):
     try:
         conn = sqlite3.connect('/app/cat/plugins/restaurant/ristorante.db')
         print((nome_piatto,))
+        piatto = nome_piatto.lower()
         cursor = conn.cursor()
         cursor.execute('''
                 UPDATE menu
                 SET quantità_ordinate_totali = quantità_ordinate_totali + 1,
                     rimanenze_magazzino = rimanenze_magazzino - 1
                 WHERE nome = ?
-            ''', (nome_piatto,))  # Il parametro deve essere passato come tupla
+            ''', (piatto,))  # Il parametro deve essere passato come tupla
         conn.commit()
         conn.close()
-        return "Database aggiornato per l'item: " + str(nome_piatto)
+        return "Database aggiornato per l'item: " + str(piatto)
     except sqlite3.OperationalError as e:
         return e
 

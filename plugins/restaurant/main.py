@@ -1,45 +1,74 @@
 import json
 from fileinput import hook_encoded
 from typing import Optional, List
+
 from pydantic import BaseModel, Field, field_validator, ValidationInfo
 from cat.mad_hatter.decorators import tool
 from cat.mad_hatter.decorators import hook
 from cat.experimental.form import form, CatForm, CatFormState
+from ..super_cat_form.super_cat_form import SuperCatForm, form_tool, super_cat_form
 from ..restaurant_utility.main import get_all_items_in_menu, get_price_of_item_in_menu, add_order_and_remove_rimanenze
 
-# @hook
-# def before_cat_sends_message(message, cat):
-#     active_form = cat.working_memory.active_form
-#     cat.send_ws_message("PORCO DE DIO MALEDETTO CANE SCHIFOSO LURIDO VERONA HA PERSO")
-#     #message["content"] = str(message["content"]) + str(active_form.form_data)
-#     print("ACTIVE FORM NELL'HOOK:")
-#     print(type(active_form))
-#     print(active_form)
-#     return message
+# @hook(priority=4)
+# def after_cat_bootstrap(cat):
+#     prompt = (
+#         """
+#             Role: You are an experienced waiter working at the prestigious and renowned "Pizzeria Roma Tre," a restaurant famous
+#              for its high-quality pizzas and excellent service.
+#
+#             Communication Style: You must always speak in Italian, with politeness, professionalism, and elegance. Your tone should be
+#              warm and respectful, yet knowledgeable when recommending pizzas and drink pairings.
+#
+#             """
+#     )
+#     #return {"output": cat.llm(prompt)}
+#     return f"{prompt}"
+
+
+@hook(priority=4)  # default priority = 1
+def agent_prompt_prefix(prefix, cat):
+    # change the Cat's personality
+    menu = get_all_items_in_menu()
+    prefix = f"""
+    Role: You are an experienced waiter working at the prestigious and renowned "Pizzeria Roma Tre," a restaurant famous
+     for its high-quality pizzas and excellent service.
+
+    Communication Style: You must always speak in Italian, with politeness, professionalism, and elegance. Your tone should be
+     warm and respectful, yet knowledgeable when recommending pizzas and drink pairings.
+
+    Main Responsibilities:
+        Greet customers warmly and professionally.
+        Present the menu {menu} in detail.
+        Maintain a consistently kind and helpful attitude.
+        
+    ALWAYS ANSWER IN ITALIAN
+    """
+    # Answer questions about ingredients, preparation, and dietary options with expertise.
+    return prefix
 
 
 # Define the base model for a pizza order
 class PizzaOrder(BaseModel):
-    items: List[str] = Field(..., description="List of item in menu requested by the customer (e.g., margherita, boscaiola)")
+    food_order: List[str] = Field(..., description="The complete list of food and drink items that the customer has ordered.")
     #delivery: bool = Field(..., description="True if the customer wants delivery, False for pickup")
-    customer_name: str = Field(..., description="Customer's name")
+    customer_name: str = Field(..., description="Customer's name.")
     #desired_time: str = Field(..., description="Desired time for delivery or pickup (format: HH:MM)")
     notes: Optional[str] = Field(None, description="Additional notes (e.g., no onions, extra spicy oil)")
-    total: Optional[float] = Field(None, description="Total price of items in order requested by the customer")
+    total: Optional[float] = Field(None, description="Total price of food_order's items that customer wants to order.")
 
     # Validator to ensure the items list is not empty
-    @field_validator("items")
+    @field_validator("food_order")
     @classmethod
     def check_elem_exist(cls, v, info: ValidationInfo) -> str:
         if not isinstance(v, list):
-            raise ValueError("Items must be a list of strings.")
+            raise ValueError("food_order must be a list of strings.")
 
         list_menu_item = get_all_items_in_menu()
         print("LISTA MENU: ")
         print(list_menu_item)
         for item in v:
             print("ITEM: " + item)
-            if item not in list_menu_item:
+            if item.lower() not in list_menu_item:
                 raise ValueError(f"Item '{item}' is not present in the menu list.")
         return v
 
@@ -68,6 +97,7 @@ class PizzaOrder(BaseModel):
 
 # forms let you control goal oriented conversations
 @form
+#@super_cat_form
 class PizzaForm(CatForm):
     description = "A form that is triggered when the user wants to start an order at the restaurant."
     model_class = PizzaOrder
@@ -85,6 +115,18 @@ class PizzaForm(CatForm):
     ask_confirm = True
     #model_class.items
 
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     # self.events.on(
+    #     #     FormEvent.EXTRACTION_COMPLETED,
+    #     #     self.hawaiian_is_not_a_real_pizza
+    #     # )
+    #
+    # @form_tool(return_direct=True)
+    # def ask_for_promotions(self):
+    #     """Useful to get any daily promotions. User may ask: what are the daily promotions? Input is always None."""
+    #
+
     # Method to handle form submission
     def submit(self, form_data):
         # Simulate saving the order via an API request
@@ -95,15 +137,29 @@ class PizzaForm(CatForm):
         self.cat.send_ws_message("SUBMIT FUNCTION")
         print("FORM DATA: ", form_data)
 
-        lista_ordinato = form_data.get('items', [])
+        lista_ordinato = form_data.get('food_order', [])
         for elem in lista_ordinato:
             print("PIZZA ORDINATA: " + elem)
             res = add_order_and_remove_rimanenze(elem)
             print(res)
 
         prompt = (
-            f"The pizza order is complete. The details are: {form_data}. "
-            "summarize the order shortly and tell it to the customer"
+            """
+                You are a polite, professional, and friendly virtual waiter, responsible for assisting customers with their orders. Your goal is to clearly present the customer's order, inform them that the order is complete.
+                The input will be a JSON object containing the following fields:
+                food_order: A list of dishes ordered by the customer.
+                total: The total amount to be paid in euros.
+                customer_name: The name of the customer.
+                """
+            f" {form_data}. "
+            """
+                Behavior Instructions
+                Order summary: Clearly list the ordered dishes from the food_order field.
+                Total amount due: Inform the customer of the total price (total).
+                Waiter-like tone: Maintain a friendly, helpful, and courteous tone, just like a real waiter in a restaurant would.
+                
+                ALWAYS ANSWER IN ITALIAN
+            """
         )
         return {"output": self.cat.llm(prompt)}
 
@@ -119,9 +175,23 @@ class PizzaForm(CatForm):
     def message_wait_confirm(self):
         self.cat.send_ws_message("MESSAGE WAIT_CONFIRM FUNCTION")
         prompt = (
+            """
+                You are a polite, professional, and friendly virtual waiter, responsible for assisting customers with their orders. Your goal is to clearly present the customer's order, inform them of the total amount due, and politely ask if the customer want to confirm the order or change something.
+                The input will be a JSON object containing the following fields:
+                food_order: A list of dishes ordered by the customer.
+                total: The total amount to be paid in euros.
+                customer_name: The name of the customer.
+                """
             f"{self._generate_base_message()}\n"
-            "Summarize the collected details kindly and shortly and ask the customer if he want to confirm the information and proceed with the order or not \n"
-           # "Say something like, 'So, this is what we’ve got ... Do you want to confirm?'"
+            """
+                Behavior Instructions
+                Order summary: Clearly list the ordered dishes from the food_order field.
+                Total amount due: Inform the customer of the total price (total).
+                Waiter-like tone: Maintain a friendly, helpful, and courteous tone, just like a real waiter in a restaurant would.
+                
+                ALWAYS ANSWER IN ITALIAN
+            """
+
         )
         return {"output": f"{self.cat.llm(prompt)}"}
 
@@ -130,8 +200,24 @@ class PizzaForm(CatForm):
         self.cat.send_ws_message("MESSAGE INCOMPLETE  FUNCTION")
         print(self._generate_base_message())
         prompt = (
+            """
+                You are a polite, professional, and friendly virtual waiter, responsible for assisting customers with their orders. Your goal is to clearly present the customer's order, inform them of the total amount due, and politely ask for any missing information.
+                The input will be a JSON object containing the following fields:
+                food_order: A list of dishes ordered by the customer.
+                total: The total amount to be paid in euros.
+                missing_fields: A list of missing pieces of information that need to be requested from the customer.
+            """
             f"{self._generate_base_message()}\n"
-            "Summarize the collected details kindly and shortly and ask the customer to provide missing information\n"
+            """
+                Behavior Instructions
+                Warm and polite greeting: Always start with a cordial greeting.
+                Order summary: Clearly list the ordered dishes from the food_order field.
+                Total amount due: Inform the customer of the total price (total).
+                Request for missing information: Politely ask the customer to provide the missing details specified in missing_fields.
+                Waiter-like tone: Maintain a friendly, helpful, and courteous tone, just like a real waiter in a restaurant would.
+                
+                ALWAYS ANSWER IN ITALIAN
+            """
         )
         return {"output": f"{self.cat.llm(prompt)}"}
 
@@ -140,10 +226,10 @@ class PizzaForm(CatForm):
         self.cat.send_ws_message("UPDATE FUNCTION")
 
         #EXTRACT
-        json_details = self.extract()   #{'items': ['margherita'], 'customer_name': None, 'notes': None, 'total': 0}
+        json_details = self.extract()   #{'food_order': ['margherita'], 'customer_name': None, 'notes': None, 'total': 0}
 
         #UPDATE TOTAL
-        lista_ordinato = json_details.get('items', [])
+        lista_ordinato = json_details.get('food_order', [])
         tot = 0
         for elem in lista_ordinato:
             tot += get_price_of_item_in_menu(elem)
@@ -151,17 +237,17 @@ class PizzaForm(CatForm):
 
         #json_details['confirmed'] = False
 
-        json_details = self.sanitize(json_details)     #{'items': ['margherita']}
+        json_details = self.sanitize(json_details)     #{'food_order': ['margherita']}
         print("JSON DETAILS AFTER SANITIZE:")
         print(json_details)
 
         # model merge old and new
-        new_model = self._model | json_details         #{'items': ['margherita']}
+        new_model = self._model | json_details         #{'food_order': ['margherita']}
         print("NEW MODEL: ")
         print(new_model)
 
         # Validate new_details
-        new_model = self.validate(new_model)           #{'items': ['margherita'], 'customer_name': None, 'notes': None}
+        new_model = self.validate(new_model)           #{'food_order': ['margherita'], 'customer_name': None, 'notes': None}
         print("NEW MODEL AFTER VALIDATE: ")
         print(new_model)
 
@@ -173,7 +259,10 @@ class PizzaForm(CatForm):
         user_message = self.cat.working_memory.user_message_json.text
 
         # Confirm prompt
-        confirm_prompt = f"""Your task is to produce a JSON representing whether a user is confirming or not.
+        confirm_prompt = f"""
+        ALWAYS ANSWER IN ITALIAN
+        
+        Your task is to produce a JSON representing whether a user is confirming or not.
                              If the user wants to order other things it means that he don't want to confirm.
                              Responses like 'no, I want to order something else' indicate that the user does not want to confirm.
                                 JSON must be in this format:
@@ -193,43 +282,3 @@ class PizzaForm(CatForm):
 
         response = self.cat.llm(confirm_prompt)
         return "true" in response.lower()
-
-    # # Execute the dialogue step
-    # def next(self):
-    #     # could we enrich prompt completion with episodic/declarative memories?
-    #     # self.cat.working_memory.episodic_memories = []
-    #
-    #     # If state is WAIT_CONFIRM, check user confirm response..
-    #     if self._state == CatFormState.WAIT_CONFIRM:
-    #         if self.confirm():
-    #             self._state = CatFormState.CLOSED
-    #             return self.submit(self._model)
-    #         else:
-    #             if self.check_exit_intent():
-    #                 self._state = CatFormState.CLOSED
-    #             else:
-    #                 self._state = CatFormState.INCOMPLETE
-    #
-    #
-    #     if self.check_exit_intent():
-    #         self._state = CatFormState.CLOSED
-    #
-    #     # If the state is INCOMPLETE, execute model update
-    #     # (and change state based on validation result)
-    #     if self._state == CatFormState.INCOMPLETE:
-    #         self._model = self.update()
-    #
-    #
-    #
-    #     # If state is COMPLETE, ask confirm (or execute action directly)
-    #     if self._state == CatFormState.COMPLETE:
-    #         if self.check_exit_intent():
-    #             self._state = CatFormState.CLOSED
-    #         if self.ask_confirm:
-    #             self._state = CatFormState.WAIT_CONFIRM
-    #         else:
-    #             self._state = CatFormState.CLOSED
-    #             return self.submit(self._model)
-    #
-    #     # if state is still INCOMPLETE, recap and ask for new info
-    #     return self.message()
